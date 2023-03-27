@@ -65,14 +65,10 @@ def remove_boxed(s):
 
 
 def dict_to_gpu(d, device_id=None):
-    new_dict = dict()
-    for key, value in d.items():
-        # Only move to GPU is cuda() is a function
-        if 'cuda' in dir(value):
-            new_dict[key] = value.cuda(device_id)
-        else:
-            new_dict[key] = value
-    return new_dict
+    return {
+        key: value.cuda(device_id) if 'cuda' in dir(value) else value
+        for key, value in d.items()
+    }
 
 
 def get_real_sol_idxs(tokens_sol, tokenizer):
@@ -178,7 +174,7 @@ def run_eval(args):
                 temperature=1.0,
                 max_length=384 if args.arch == 'gpt2-xl' else 1024
             )
-            
+
             # logits = model(output_ids).logits
             # probs = F.softmax(logits, dim=2) # torch.Size([1, L, 50257])
             # max_probs, max_tokens = probs.max(2) # torch.Size([1, L]), torch.Size([1, L])
@@ -242,19 +238,18 @@ def run_eval(args):
                 cors[(prob_level, prob_type)].append(equiv)
             else:
                 cors[(prob_level, prob_type)] = [equiv]
-            
+
             if prob_level in level_cors:
                 level_cors[prob_level].append(equiv)
-            else:
-                if prob_level is not None:
-                    level_cors[prob_level] = [equiv]
-            
+            elif prob_level is not None:
+                level_cors[prob_level] = [equiv]
+
             if prob_type in subject_cors:
                 subject_cors[prob_type].append(equiv)
             else:
                 if prob_type is not None:
                     subject_cors[prob_type] = [equiv]
-            
+
             if equiv:
                 correct += 1
                 mean_max_probs_correct.append(mean_probs_sol)
@@ -263,7 +258,7 @@ def run_eval(args):
 
             # print("CORRECT", mean_max_probs_correct)
             # print("WRONG", mean_max_probs_wrong)
-            
+
             total += 1
 
     subjects = ['Prealgebra', 'Algebra', 'Number Theory', 'Counting & Probability', 'Geometry', 'Intermediate Algebra', 'Precalculus']
@@ -274,7 +269,9 @@ def run_eval(args):
     # now save outputs and answers
     with open(f"outputs_answers_Temp2e-1_{args.arch}.txt", "w+") as f:
         for k, (output, answer, prob_type, prob_level, fname) in enumerate(zip(outputs, answers, types, levels, fnames_list)):
-            f.write("{} TYPE: {} | LEVEL: {} | OUTPUT: {} | ANSWER: {} | FNAME: {}\n".format(k, prob_type, prob_level, output, answer, fname))
+            f.write(
+                f"{k} TYPE: {prob_type} | LEVEL: {prob_level} | OUTPUT: {output} | ANSWER: {answer} | FNAME: {fname}\n"
+            )
 
         # print(cors)
         for prob_type in subjects:
@@ -302,12 +299,12 @@ def run_eval(args):
                 f.write("{} Accuracy = {}/{} = {:.3f}\n".format(subject, np.sum(cors_list), len(cors_list), np.mean(cors_list)))
         print("#####################")
         f.write("#####################\n")
-        
+
         print("Overall Accuracy = {}/{} = {:.3f}".format(correct, total, correct/total))
-        print("Skipped = {}".format(skipped))
+        print(f"Skipped = {skipped}")
         f.write("Overall Accuracy = {}/{} = {:.3f}\n".format(correct, total, correct/total))
-        f.write("Skipped = {}".format(skipped))
-    
+        f.write(f"Skipped = {skipped}")
+
     print()
     
 def get_model_output(context, full_output, tokenizer):
@@ -346,9 +343,8 @@ def get_dataset(args):
                 )
             )
 
-    
-    train_data = torch.utils.data.ConcatDataset(all_datasets)
-    return train_data
+
+    return torch.utils.data.ConcatDataset(all_datasets)
 
 
 if __name__ == "__main__":

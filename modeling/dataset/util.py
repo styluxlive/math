@@ -9,16 +9,14 @@ def last_boxed_only(sample):
     """
     q, a = sample
     a = last_boxed_only_string(a)
-    if a == None:
-        return None
-    return (q, a)
+    return None if a is None else (q, a)
 
 def last_boxed_only_string(string):
     idx = string.rfind("\\boxed")
     if idx < 0:
         idx = string.rfind("\\fbox")
-        if idx < 0:
-            return None
+    if idx < 0:
+        return None
 
     i = idx
     right_brace_idx = None
@@ -32,27 +30,22 @@ def last_boxed_only_string(string):
                 right_brace_idx = i
                 break
         i += 1
-    
-    if right_brace_idx == None:
-        retval = None
-    else:
-        retval = string[idx:right_brace_idx + 1]
-    
-    return retval
+
+    return None if right_brace_idx is None else string[idx:right_brace_idx + 1]
 
 def only_until_first_boxed_from_tokens(string, tokens):
     idx = string.find("\\boxed")
     if idx < 0:
         idx = string.find("\\fbox")
-        if idx < 0:
-            return None
-    
+    if idx < 0:
+        return None
+
     cum_length = 0
     for i, t in enumerate(tokens):
         cum_length += len(t)
         if cum_length >= idx:
             break
-    
+
     return tokens[:i]
 
 
@@ -60,10 +53,7 @@ def only_until_first_boxed_from_tokens(string, tokens):
 def clean_numbers(sample):
     if not sample:
         return None
-    new_sample = list()
-    for s in sample:
-        new_sample.append(_clean_numbers(s))
-
+    new_sample = [_clean_numbers(s) for s in sample]
     return tuple(new_sample)
 
 def _clean_numbers(string):

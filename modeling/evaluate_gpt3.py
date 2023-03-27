@@ -28,7 +28,7 @@ def call_engine(train_prompt, problem, engine="davinci"):
     startindex = -1 * num_tokens
     endindex = -1 * num_tokens + 1
     for token in tokens[startindex + 1:]:
-        if token == "$" or token == "###" or token == "\n":
+        if token in ["$", "###", "\n"]:
             break
         else:
             endindex += 1
@@ -112,9 +112,8 @@ def run(engine="davinci", max=-1):
                     cors[(prob_level, prob_type)] = [equiv]
                 if prob_level in level_cors:
                     level_cors[prob_level].append(equiv)
-                else:
-                    if prob_level is not None:
-                        level_cors[prob_level] = [equiv]
+                elif prob_level is not None:
+                    level_cors[prob_level] = [equiv]
                 if prob_type in subject_cors:
                     subject_cors[prob_type].append(equiv)
                 else:
@@ -124,16 +123,18 @@ def run(engine="davinci", max=-1):
                     correct += 1
                 total += 1
 
-                print(str(correct) + "/" + str(total))
+                print(f"{str(correct)}/{total}")
 
             if max > 0 and total > max:
                 break
         if max > 0 and total > max:
             break
 
-    with open("outputs_answers_gpt3_{}.txt".format(engine), "w+") as f:
+    with open(f"outputs_answers_gpt3_{engine}.txt", "w+") as f:
         for k, (output, answer, prob_type, prob_level, fname) in enumerate(zip(outputs, answers, types, levels, fnames_list)):
-            f.write("{} TYPE: {} | LEVEL: {} | OUTPUT: {} | ANSWER: {} | FNAME: {}\n".format(k, prob_type, prob_level, output, answer, fname))
+            f.write(
+                f"{k} TYPE: {prob_type} | LEVEL: {prob_level} | OUTPUT: {output} | ANSWER: {answer} | FNAME: {fname}\n"
+            )
 
         f.write("#####################\n")
         # also get accuracies for each
