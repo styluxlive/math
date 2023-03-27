@@ -34,15 +34,13 @@ def run_training(args, train_data):
     if not args.save_steps:
         # Save every epoch
         if not args.tpu_num_cores:
-            save_steps = len(train_data) 
+            save_steps = len(train_data)
             save_steps = int(save_steps / torch.cuda.device_count())
-            save_steps = int(save_steps / args.grad_acc_steps)
-            save_steps = int(save_steps / args.batch_size_per_replica)
         else:
-            save_steps = len(train_data) 
-            save_steps = int(save_steps / 8) # 8 TPU cores is constant for now.
-            save_steps = int(save_steps / args.grad_acc_steps)
-            save_steps = int(save_steps / args.batch_size_per_replica)
+            save_steps = len(train_data)
+            save_steps //= 8
+        save_steps = int(save_steps / args.grad_acc_steps)
+        save_steps = int(save_steps / args.batch_size_per_replica)
     else:
         save_steps = args.save_steps
 
@@ -59,12 +57,12 @@ def run_training(args, train_data):
 
     start_epoch = 0
     start_iteration = 0
-    
+
     ## Dataloading ######################################################## 
     train_data.start_iteration = start_iteration
 
     ## Start Loop ########################################################
-    print(f"Setting up Trainer")
+    print("Setting up Trainer")
 
     training_args = transformers.TrainingArguments(
         output_dir=args.save_dir,
@@ -108,7 +106,7 @@ def run_training(args, train_data):
 
     print(f"STARTING TRAINING. save_steps={save_steps}")
     trainer.train()
-    
+
     trainer.save_model(os.path.join(args.save_dir, "final_checkpoint"))
     print("Finished")
 
@@ -125,11 +123,19 @@ class GPT2Trainer(transformers.Trainer):
             no_decay = ["bias", "LayerNorm.weight"]
             optimizer_grouped_parameters = [
                 {
-                    "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay)],
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if all(nd not in n for nd in no_decay)
+                    ],
                     "weight_decay": self.args.weight_decay,
                 },
                 {
-                    "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay)],
+                    "params": [
+                        p
+                        for n, p in self.model.named_parameters()
+                        if any(nd in n for nd in no_decay)
+                    ],
                     "weight_decay": 0.0,
                 },
             ]
@@ -141,7 +147,6 @@ class GPT2Trainer(transformers.Trainer):
             )
 
         if self.lr_scheduler is None:
-            
             if self.args.warmup_steps == -1:
                 print("Using constant LR")
                 self.lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lambda steps: 1.0)
@@ -190,11 +195,13 @@ def get_tokenizer_gpt(args):
     >>> tokenizer_old.encode("HEllo world!")
     [13909, 18798, 995, 0]
     """
-    if args.tokenizer_merges_file is not None:
-        tokenizer = transformers.GPT2Tokenizer.from_pretrained(args.arch, merges_file=args.tokenizer_merges_file)
-    else:
-        tokenizer = transformers.GPT2Tokenizer.from_pretrained(args.arch)
-    return tokenizer
+    return (
+        transformers.GPT2Tokenizer.from_pretrained(
+            args.arch, merges_file=args.tokenizer_merges_file
+        )
+        if args.tokenizer_merges_file is not None
+        else transformers.GPT2Tokenizer.from_pretrained(args.arch)
+    )
 
 def get_dataset(args): 
 

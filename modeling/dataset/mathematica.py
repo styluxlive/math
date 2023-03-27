@@ -49,9 +49,7 @@ class MathematicaMathDataset(BaseMathDataset):
                 reading_question = True
                 curr_section = ""
                 for line in fp:
-                    if line == "Problem:\n":
-                        reading_question = True
-                    elif line == "Answer:\n":
+                    if line == "Answer:\n":
                         if reading_question:
                             # curr_section contains Q
                             question = curr_section
@@ -60,15 +58,15 @@ class MathematicaMathDataset(BaseMathDataset):
                             answers.append(curr_section)
                         curr_section = ""
                         reading_question = False
+                    elif line == "Problem:\n":
+                        reading_question = True
                     else:
                         curr_section += line
-                
+
                 # The last answer needs to be recorded.
                 answers.append(curr_section)
-            
-            for a in answers:
-                samples_raw.append((question, a, fname))
 
+            samples_raw.extend((question, a, fname) for a in answers)
         # manager = Manager()
         # samples_raw = manager.list(samples_raw)
         self.samples = samples_raw
@@ -81,7 +79,7 @@ class MathematicaMathDataset(BaseMathDataset):
         Does the actual tokenization. Should be parallelized because it can be a bit slow.
         """
 
-        if sample == None:
+        if sample is None:
             return None
 
         question, answer = sample
@@ -89,29 +87,28 @@ class MathematicaMathDataset(BaseMathDataset):
             question = _clean_numbers(question)
             answer = _clean_numbers(answer)
 
-        if self.mode_answer == 'default':
-            question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question, verbose=False))
-
-            sep_ids          = torch.LongTensor(self.tokenizer.encode("\nFINAL ANSWER:\n", verbose=False))
-            answer_ids       = self.tokenizer.encode(answer, verbose=False)
-            answer_ids.append(self.tokenizer.eos_token_id)
-            answer_ids       = torch.LongTensor(answer_ids)
-            
-            # Use full solution
-            input_ids = torch.cat([
-                question_ids, 
-                sep_ids,
-                answer_ids
-            ], dim=0)
-
-            label_ids = torch.cat([
-                torch.ones_like(question_ids) * -100, 
-                torch.ones_like(sep_ids) * -100, 
-                answer_ids.clone()
-            ], dim=0)
-        else:
+        if self.mode_answer != 'default':
             raise NotImplementedError()
-        
+
+        question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question, verbose=False))
+
+        sep_ids          = torch.LongTensor(self.tokenizer.encode("\nFINAL ANSWER:\n", verbose=False))
+        answer_ids       = self.tokenizer.encode(answer, verbose=False)
+        answer_ids.append(self.tokenizer.eos_token_id)
+        answer_ids       = torch.LongTensor(answer_ids)
+
+        # Use full solution
+        input_ids = torch.cat([
+            question_ids, 
+            sep_ids,
+            answer_ids
+        ], dim=0)
+
+        label_ids = torch.cat([
+            torch.ones_like(question_ids) * -100, 
+            torch.ones_like(sep_ids) * -100, 
+            answer_ids.clone()
+        ], dim=0)
         # Stop early if this Q,A pair is too long
         if input_ids.shape[0] > self.max_tokens:
             # Print reason for skipping
@@ -131,7 +128,7 @@ class MathematicaMathDataset(BaseMathDataset):
         Does the actual tokenization. Should be parallelized because it can be a bit slow.
         """
 
-        if sample == None:
+        if sample is None:
             return None
 
         question, answer = sample
@@ -139,20 +136,19 @@ class MathematicaMathDataset(BaseMathDataset):
             question = _clean_numbers(question)
             answer = _clean_numbers(answer)
 
-        if self.mode_answer == 'default':
-            question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question + "\nFINAL ANSWER:\n", verbose=False))
-            answer_ids       = torch.LongTensor(self.tokenizer.encode(answer, verbose=False))
-
-            input_ids = torch.cat([
-                question_ids, 
-            ], dim=0)
-
-            label_ids = torch.cat([
-                answer_ids
-            ], dim=0)
-        else:
+        if self.mode_answer != 'default':
             raise NotImplementedError()
-        
+
+        question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question + "\nFINAL ANSWER:\n", verbose=False))
+        answer_ids       = torch.LongTensor(self.tokenizer.encode(answer, verbose=False))
+
+        input_ids = torch.cat([
+            question_ids, 
+        ], dim=0)
+
+        label_ids = torch.cat([
+            answer_ids
+        ], dim=0)
         # Stop early if this Q,A pair is too long
         if input_ids.shape[0] > self.max_tokens:
             # Print reason for skipping

@@ -109,7 +109,7 @@ class KhanAcademyMathDataset(BaseMathDataset):
         Does the actual tokenization. Should be parallelized because it can be a bit slow.
         """
 
-        if sample == None:
+        if sample is None:
             return None
 
         question, answer = sample
@@ -117,55 +117,54 @@ class KhanAcademyMathDataset(BaseMathDataset):
             question = _clean_numbers(question)
             answer = list(map(_clean_numbers, answer))
 
-        if self.mode_answer == 'mixed_hints':
-            answer_full = "".join(answer)
-            answer_final = answer[-1]
-
-            question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question, verbose=False))
-            
-            if random.random() < 0.5:
-                # Use full solution
-                sep_ids_2             = torch.LongTensor(self.tokenizer.encode("\nFULL SOLUTION:\n", verbose=False))
-                answer_full_ids       = self.tokenizer.encode(answer_full, verbose=False)
-                answer_full_ids.append(self.tokenizer.eos_token_id)
-                answer_full_ids       = torch.LongTensor(answer_full_ids)
-                if self.latex_mask:
-                    answer_full_ids_label = self.tokenize_latex_mask_full_answer(answer_full)
-                else:
-                    answer_full_ids_label = answer_full_ids.clone()
-
-                input_ids = torch.cat([
-                    question_ids, 
-                    sep_ids_2,
-                    answer_full_ids
-                ], dim=0)
-
-                label_ids = torch.cat([
-                    torch.ones_like(question_ids) * -100, 
-                    torch.ones_like(sep_ids_2) * -100, 
-                    answer_full_ids_label
-                ], dim=0)
-            else:
-                # Use only final answer
-                sep_ids_1        = torch.LongTensor(self.tokenizer.encode("\nFINAL ANSWER:\n", verbose=False))
-                answer_final_ids = self.tokenizer.encode(answer_final, verbose=False)
-                answer_final_ids.append(self.tokenizer.eos_token_id)
-                answer_final_ids = torch.LongTensor(answer_final_ids)
-
-                input_ids = torch.cat([
-                    question_ids, 
-                    sep_ids_1, 
-                    answer_final_ids,
-                ], dim=0)
-
-                label_ids = torch.cat([
-                    torch.ones_like(question_ids) * -100, 
-                    torch.ones_like(sep_ids_1) * -100, 
-                    answer_final_ids.clone(),
-                ], dim=0)
-        else:
+        if self.mode_answer != 'mixed_hints':
             raise NotImplementedError()
-        
+
+        answer_full = "".join(answer)
+        answer_final = answer[-1]
+
+        question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question, verbose=False))
+
+        if random.random() < 0.5:
+            # Use full solution
+            sep_ids_2             = torch.LongTensor(self.tokenizer.encode("\nFULL SOLUTION:\n", verbose=False))
+            answer_full_ids       = self.tokenizer.encode(answer_full, verbose=False)
+            answer_full_ids.append(self.tokenizer.eos_token_id)
+            answer_full_ids       = torch.LongTensor(answer_full_ids)
+            answer_full_ids_label = (
+                self.tokenize_latex_mask_full_answer(answer_full)
+                if self.latex_mask
+                else answer_full_ids.clone()
+            )
+            input_ids = torch.cat([
+                question_ids, 
+                sep_ids_2,
+                answer_full_ids
+            ], dim=0)
+
+            label_ids = torch.cat([
+                torch.ones_like(question_ids) * -100, 
+                torch.ones_like(sep_ids_2) * -100, 
+                answer_full_ids_label
+            ], dim=0)
+        else:
+            # Use only final answer
+            sep_ids_1        = torch.LongTensor(self.tokenizer.encode("\nFINAL ANSWER:\n", verbose=False))
+            answer_final_ids = self.tokenizer.encode(answer_final, verbose=False)
+            answer_final_ids.append(self.tokenizer.eos_token_id)
+            answer_final_ids = torch.LongTensor(answer_final_ids)
+
+            input_ids = torch.cat([
+                question_ids, 
+                sep_ids_1, 
+                answer_final_ids,
+            ], dim=0)
+
+            label_ids = torch.cat([
+                torch.ones_like(question_ids) * -100, 
+                torch.ones_like(sep_ids_1) * -100, 
+                answer_final_ids.clone(),
+            ], dim=0)
         # Stop early if this Q,A pair is too long
         if question_ids.shape[0] > self.max_tokens:
             # Print reason for skipping
@@ -185,7 +184,7 @@ class KhanAcademyMathDataset(BaseMathDataset):
         Does the actual tokenization. Should be parallelized because it can be a bit slow.
         """
 
-        if sample == None:
+        if sample is None:
             return None
 
         question, answer = sample
@@ -193,21 +192,20 @@ class KhanAcademyMathDataset(BaseMathDataset):
             question = _clean_numbers(question)
             answer = list(map(_clean_numbers, answer))
 
-        if self.mode_answer == 'mixed_hints':
-            answer_full = "".join(answer)
-            answer_final = answer[-1]
-            
-            if random.random() < 0.5:
-                # Use full solution
-                question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question + "\nFULL SOLUTION:\n", verbose=False))
-                answer_ids       = torch.LongTensor(self.tokenizer.encode(answer_full, verbose=False))
-            else:
-                # Use only final answer
-                question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question + "\nFINAL ANSWER:\n", verbose=False))
-                answer_ids       = torch.LongTensor(self.tokenizer.encode(answer_final, verbose=False))
-        else:
+        if self.mode_answer != 'mixed_hints':
             raise NotImplementedError()
-        
+
+        answer_full = "".join(answer)
+        answer_final = answer[-1]
+
+        if random.random() < 0.5:
+            # Use full solution
+            question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question + "\nFULL SOLUTION:\n", verbose=False))
+            answer_ids       = torch.LongTensor(self.tokenizer.encode(answer_full, verbose=False))
+        else:
+            # Use only final answer
+            question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question + "\nFINAL ANSWER:\n", verbose=False))
+            answer_ids       = torch.LongTensor(self.tokenizer.encode(answer_final, verbose=False))
         input_ids = torch.cat([
             question_ids, 
         ], dim=0)

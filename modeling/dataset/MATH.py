@@ -57,7 +57,7 @@ class MATHDataset(BaseMathDataset):
         Does the actual tokenization. Should be parallelized because it can be a bit slow.
         """
 
-        if sample == None:
+        if sample is None:
             return None
 
         if self.mode_answer == 'peeking_only':
@@ -73,10 +73,7 @@ class MATHDataset(BaseMathDataset):
             else:
                 _mode_answer = 'full'
         elif self.mode_answer == 'mixed_final_boxed_and_full':
-            if random.random() < 0.5:
-                _mode_answer = 'full'
-            else:
-                _mode_answer = 'final_boxed'
+            _mode_answer = 'full' if random.random() < 0.5 else 'final_boxed'
         elif self.mode_answer == 'full':
             _mode_answer = 'full'
         elif self.mode_answer == 'final_boxed':
@@ -85,36 +82,7 @@ class MATHDataset(BaseMathDataset):
             raise NotImplementedError(f"self.mode_answer = {self.mode_answer} not recognized.")
 
 
-        if _mode_answer == 'full':
-            question, answer = sample
-
-            if self.clean_numbers:
-                question = _clean_numbers(question)
-                answer   = _clean_numbers(answer)
-
-            answer_final = last_boxed_only_string(answer)
-
-            question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question, verbose=False))
-            
-            sep_ids_2        = torch.LongTensor(self.tokenizer.encode("\nFULL SOLUTION:\n", verbose=False))
-            answer_ids       = self.tokenizer.encode(answer, verbose=False)
-            answer_ids.append(self.tokenizer.eos_token_id)
-            answer_ids       = torch.LongTensor(answer_ids)
-            
-            input_ids = torch.cat([
-                question_ids, 
-                sep_ids_2,
-                answer_ids
-            ], dim=0)
-
-            # Only answer_ids contribute to the loss
-            label_ids = torch.cat([
-                torch.ones_like(question_ids) * -100, 
-                torch.ones_like(sep_ids_2) * -100, 
-                answer_ids.clone()
-            ], dim=0)
-        
-        elif _mode_answer == 'final_boxed':
+        if _mode_answer == 'final_boxed':
             question, answer = sample
 
             if self.clean_numbers:
@@ -126,7 +94,7 @@ class MATHDataset(BaseMathDataset):
                 return None
 
             question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question, verbose=False))
-            
+
             sep_ids_1        = torch.LongTensor(self.tokenizer.encode("\nFINAL ANSWER:\n", verbose=False))
             answer_final_ids = self.tokenizer.encode(answer_final, verbose=False)
             answer_final_ids.append(self.tokenizer.eos_token_id)
@@ -144,10 +112,39 @@ class MATHDataset(BaseMathDataset):
                 torch.ones_like(sep_ids_1) * -100, 
                 answer_final_ids.clone(),
             ], dim=0)
-        
+
+        elif _mode_answer == 'full':
+            question, answer = sample
+
+            if self.clean_numbers:
+                question = _clean_numbers(question)
+                answer   = _clean_numbers(answer)
+
+            answer_final = last_boxed_only_string(answer)
+
+            question_ids     = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question, verbose=False))
+
+            sep_ids_2        = torch.LongTensor(self.tokenizer.encode("\nFULL SOLUTION:\n", verbose=False))
+            answer_ids       = self.tokenizer.encode(answer, verbose=False)
+            answer_ids.append(self.tokenizer.eos_token_id)
+            answer_ids       = torch.LongTensor(answer_ids)
+
+            input_ids = torch.cat([
+                question_ids, 
+                sep_ids_2,
+                answer_ids
+            ], dim=0)
+
+            # Only answer_ids contribute to the loss
+            label_ids = torch.cat([
+                torch.ones_like(question_ids) * -100, 
+                torch.ones_like(sep_ids_2) * -100, 
+                answer_ids.clone()
+            ], dim=0)
+
         else:
             raise NotImplementedError()
-        
+
         # Stop early if this Q,A pair is too long
         if input_ids.shape[0] > self.max_tokens:
             # Print reason for skipping
@@ -164,7 +161,7 @@ class MATHDataset(BaseMathDataset):
 
     def clean_filter_sample_nopackpadding_gpt(self, sample):
 
-        if sample == None:
+        if sample is None:
             return None
 
         question, answer = sample
@@ -182,7 +179,7 @@ class MATHDataset(BaseMathDataset):
         # Stop early if this Q,A pair is too long
         num_to_pad = 32
         padding_tensor = torch.ones((num_to_pad)) * 220 # 220 is the token for space in the case of GPT2 models
-        
+
         input_ids = torch.cat([
             question_ids, 
             padding_tensor,
@@ -197,7 +194,7 @@ class MATHDataset(BaseMathDataset):
             torch.ones_like(sep_ids) * -100,
             final_answer_ids.clone()
         ], dim=0)
-        
+
         input_ids = input_ids.tolist()
         label_ids = label_ids.tolist()
 
@@ -208,7 +205,7 @@ class MATHDataset(BaseMathDataset):
 
     def clean_filter_sample_nopackpadding_gpt_eval(self, sample):
 
-        if sample == None:
+        if sample is None:
             return None
 
         question, answer = sample
@@ -225,7 +222,7 @@ class MATHDataset(BaseMathDataset):
 
         num_to_pad = 32
         padding_tensor = torch.ones((num_to_pad)) * 220 # 220 is the token for space in the case of GPT2 models
-        
+
         input_ids = torch.cat([
             question_ids, 
             padding_tensor,
@@ -242,7 +239,7 @@ class MATHDataset(BaseMathDataset):
             # Print reason for skipping
             # print(f"Skipping due to input_ids being too big. input_ids.shape[0] = {input_ids.shape[0]}.")
             return None
-        
+
         input_ids = input_ids.tolist()
         label_ids = label_ids.tolist()
 
@@ -256,7 +253,7 @@ class MATHDataset(BaseMathDataset):
         Does the actual tokenization. Should be parallelized because it can be a bit slow.
         """
 
-        if sample == None:
+        if sample is None:
             return None
 
         question, answer = sample
@@ -285,7 +282,7 @@ class MATHDataset(BaseMathDataset):
 
         sep_ids          = torch.LongTensor(self.tokenizer.encode("\nFINAL ANSWER:\n", verbose=False))
         final_answer_ids = torch.LongTensor(self.tokenizer.encode(answer_ids[final_idx:]))
-        
+
         input_ids = torch.cat([
             question_ids, 
             answer_ids,
@@ -300,7 +297,7 @@ class MATHDataset(BaseMathDataset):
             torch.ones_like(sep_ids) * -100,
             final_answer_ids.clone()
         ], dim=0)
-        
+
         # Stop early if this Q,A pair is too long
         if input_ids.shape[0] > self.max_tokens:
             # Print reason for skipping
@@ -320,7 +317,7 @@ class MATHDataset(BaseMathDataset):
         Does the actual tokenization. Should be parallelized because it can be a bit slow.
         """
 
-        if sample == None:
+        if sample is None:
             return None
 
         question, answer = sample
@@ -344,13 +341,13 @@ class MATHDataset(BaseMathDataset):
             final_idx = int(len(answer_ids) * random.uniform(*self.peek_fraction))
         else:
             final_idx = int(len(answer_ids) * self.peek_fraction)
-        
+
         answer_ids = answer_ids[:final_idx]
 
         # sep_ids          = torch.LongTensor(self.tokenizer.encode("\nFINAL ANSWER\n", verbose=False))
         final_answer_ids = answer_ids_full[final_idx:]
         print(final_answer_ids)
-        
+
         input_ids = torch.cat([
             question_ids, 
             answer_ids,
@@ -361,7 +358,7 @@ class MATHDataset(BaseMathDataset):
         label_ids = torch.cat([
             final_answer_ids.clone()
         ], dim=0)
-        
+
         # Stop early if this Q,A pair is too long
         if input_ids.shape[0] + label_ids.shape[0] > self.max_tokens:
             # Print reason for skipping
@@ -382,7 +379,7 @@ class MATHDataset(BaseMathDataset):
         input_ids as the context and labels as the true answer.
         """
 
-        if sample == None:
+        if sample is None:
             return None
 
         if self.mode_answer == 'eval_peeking':
@@ -411,13 +408,13 @@ class MATHDataset(BaseMathDataset):
         label_ids = torch.cat([
             answer_final_ids.clone()
         ], dim=0)
-        
+
         # Stop early if this Q,A pair is too long
         if input_ids.shape[0] + label_ids.shape[0] > self.max_tokens:
             # Print reason for skipping
             # print(f"Skipping due to input_ids being too big. input_ids.shape[0] = {input_ids.shape[0]}.")
             return None
-        
+
         return {
             'input_ids_list' : input_ids.tolist(),
             'label_ids_list' : label_ids.tolist()

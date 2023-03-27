@@ -15,17 +15,16 @@ def _fix_fracs(string):
                 a = substr[0]
                 b = substr[1]
                 if b != "{":
-                    if len(substr) > 2:
-                        post_substr = substr[2:]
-                        new_str += "{" + a + "}{" + b + "}" + post_substr
-                    else:
-                        new_str += "{" + a + "}{" + b + "}"
+                    new_str += (
+                        "{" + a + "}{" + b + "}" + substr[2:]
+                        if len(substr) > 2
+                        else "{" + a + "}{" + b + "}"
+                    )
+                elif len(substr) > 2:
+                    post_substr = substr[2:]
+                    new_str += "{" + a + "}" + b + post_substr
                 else:
-                    if len(substr) > 2:
-                        post_substr = substr[2:]
-                        new_str += "{" + a + "}" + b + post_substr
-                    else:
-                        new_str += "{" + a + "}" + b
+                    new_str += "{" + a + "}" + b
     string = new_str
     return string
 
@@ -37,20 +36,17 @@ def _fix_a_slash_b(string):
     try:
         a = int(a)
         b = int(b)
-        assert string == "{}/{}".format(a, b)
-        new_string = "\\frac{" + str(a) + "}{" + str(b) + "}"
-        return new_string
+        assert string == f"{a}/{b}"
+        return "\\frac{" + str(a) + "}{" + str(b) + "}"
     except:
         return string
 
 def _remove_right_units(string):
-    # "\\text{ " only ever occurs (at least in the val set) when describing units
-    if "\\text{ " in string:
-        splits = string.split("\\text{ ")
-        assert len(splits) == 2
-        return splits[0]
-    else:
+    if "\\text{ " not in string:
         return string
+    splits = string.split("\\text{ ")
+    assert len(splits) == 2
+    return splits[0]
 
 def _fix_sqrt(string):
     if "\\sqrt" not in string:
@@ -88,14 +84,14 @@ def _strip_string(string):
     string = string.replace("\\left", "")
     string = string.replace("\\right", "")
     #print(string)
-    
+
     # Remove circ (degrees)
     string = string.replace("^{\\circ}", "")
     string = string.replace("^\\circ", "")
 
     # remove dollar signs
     string = string.replace("\\$", "")
-    
+
     # remove units (on the right)
     string = _remove_right_units(string)
 
@@ -110,12 +106,11 @@ def _strip_string(string):
     if len(string) == 0:
         return string
     if string[0] == ".":
-        string = "0" + string
+        string = f"0{string}"
 
     # to consider: get rid of e.g. "k = " or "q = " at beginning
-    if len(string.split("=")) == 2:
-        if len(string.split("=")[0]) <= 2:
-            string = string.split("=")[1]
+    if len(string.split("=")) == 2 and len(string.split("=")[0]) <= 2:
+        string = string.split("=")[1]
 
     # fix sqrt3 --> sqrt{3}
     string = _fix_sqrt(string)
